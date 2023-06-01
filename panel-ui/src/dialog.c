@@ -14,8 +14,27 @@ bool cursorVisible = true;
 Button *okButton = NULL;
 Button *cancelButton = NULL;
 
+/**
+ * @brief Display a full screen dialog with a prompt that is centered horizontally and vertically. The prompt is very basic with OK and Cancel buttons. 
+ * 
+ * @param prompt What the user sees, centered below the entry line.
+ * @param out Variable used to store the content of the entry line.
+ * @param max Maximum length of entry.
+ * @param shouldClose If set to true, the dialog is ready to be closed immediately without processing the text input.
+ * @return true - The user has pressed enter or clicked Ok to accept the text entry.
+ * @return false - The dialog is not done yet.
+ */
 bool Dialog(const char *prompt, char *out, int max, bool *shouldClose)
 {
+	// Place initialization logic here that should be run the first time a Dialog is opened.
+	if (!initialized)
+	{
+		fadedBlack = Fade(BLACK, 0.5f);
+		fadedGreen = Fade(GREEN, 0.6f);
+		cursorSize = MeasureTextEx(GetFontDefault(), "W", GetFontDefault().baseSize * 3, 2.0f);
+		initialized = true;
+	}
+
 	*shouldClose = false;
 
 	if (okButton == NULL)
@@ -39,6 +58,9 @@ bool Dialog(const char *prompt, char *out, int max, bool *shouldClose)
 	{
 		int i = strlen(out);
 
+		// If the shift key is not pressed, add 32 to convert to lowercase. This could easily break stuff
+		// but is intentionally simple right now because it is for typing in room name info and room names
+		// are currently [A-Za-z0-9\s] only.
 		if (key >= 65 && key <= 96 && !IsKeyDown(KEY_LEFT_SHIFT) && !IsKeyDown(KEY_RIGHT_SHIFT))
 		{
 			key += 32;
@@ -70,14 +92,6 @@ bool Dialog(const char *prompt, char *out, int max, bool *shouldClose)
 			}
 			break;
 		}
-	}
-
-	if (!initialized)
-	{
-		fadedBlack = Fade(BLACK, 0.5f);
-		fadedGreen = Fade(GREEN, 0.6f);
-		cursorSize = MeasureTextEx(GetFontDefault(), "W", GetFontDefault().baseSize * 3, 2.0f);
-		initialized = true;
 	}
 
 	Vector2 currentTextSize = MeasureTextEx(GetFontDefault(), out, GetFontDefault().baseSize * 3.0f, 2.0f);

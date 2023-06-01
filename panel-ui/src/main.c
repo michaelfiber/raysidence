@@ -17,17 +17,18 @@ typedef struct
 #define MAX_ROOMS 128
 Room rooms[MAX_ROOMS];
 int currentRoom = 0;
-
-void UpdateUse();
-void UpdateEdit();
-
 int mode = MODE_EDIT;
 int screenWidth = 800;
 int screenHeight = 480;
 bool shouldClose = false;
 
+void UpdateUse();
+void UpdateEdit();
+
 int main(int argc, char *argv[])
 {
+
+	// Accept width and height dimensions are the first two arguments when the binary is called.
 	if (argc == 3)
 	{
 		TraceLog(LOG_INFO, TextFormat("dim %sx%s", argv[1], argv[2]));
@@ -35,7 +36,7 @@ int main(int argc, char *argv[])
 		screenHeight = atoi(argv[2]);
 	}
 
-	InitWindow(screenWidth, screenHeight, "rayHome");
+	InitWindow(screenWidth, screenHeight, "Raysidence - Smart home tools powered by raylib");
 
 	SetTargetFPS(60);
 
