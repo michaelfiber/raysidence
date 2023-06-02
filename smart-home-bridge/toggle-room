@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+pushd /home/michael > /dev/null
+
+echo "Update lights..."
+./get-lights
+
+echo "Read light data..."
+LIGHTS=`cat "by_type/Room/$1"`
+
+echo "The lights in $1 are $LIGHTS"
+
+# PROBLEM: this toggles all the lights in the room which isn't ideal if there is one on and one off.
+echo "Go through and toggle each light..."
+for l in ${LIGHTS[@]}; do
+
+	echo "  Get light $l"
+
+	# make sure it has up to date info for this light.
+	./get-light $l
+
+	# get the current on status of this light.
+	ON=`cat "lights/$l/data.json" | jq .state.on`
+
+	# figure out the new status we want for this light
+	NEW_STATE=
+	if [ $ON = "true" ]; then
+		NEW_STATE="false"
+	else
+		NEW_STATE="true"
+	fi
+
+	# make it happen
+	./room-set-state "$1" on $NEW_STATE
+done
+
+popd > /dev/null
