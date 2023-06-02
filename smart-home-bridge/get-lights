@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+USERNAME=
+
+if [ -f ./username ]; then
+	USERNAME=`cat username`
+fi
+
+if [ ${#USERNAME} -lt 5 ]; then
+	echo "Did not find a valid username :-("
+	exit 1
+fi
+
+SERVER=`cat server`
+
+RESPONSE=`curl -X GET http://$SERVER/api/$USERNAME/lights -s`
+
+LIGHT_IDS=`echo $RESPONSE | jq -r 'keys[] as $k | $k'`
+
+for i in ${LIGHT_IDS[@]}; do
+	mkdir -p lights/$i
+	echo $RESPONSE | jq -r ".[\"$i\"]" > lights/$i/data.json
+done
