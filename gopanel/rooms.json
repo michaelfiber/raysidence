@@ -1,0 +1,47 @@
+[
+  {
+    "rec": {
+      "X": 160,
+      "Y": 260,
+      "Width": 180,
+      "Height": 170
+    },
+    "name": "Living room"
+  },
+  {
+    "rec": {
+      "X": 350,
+      "Y": 260,
+      "Width": 140,
+      "Height": 70
+    },
+    "name": "Hallway"
+  },
+  {
+    "rec": {
+      "X": 350,
+      "Y": 340,
+      "Width": 140,
+      "Height": 90
+    },
+    "name": "Office"
+  },
+  {
+    "rec": {
+      "X": 500,
+      "Y": 260,
+      "Width": 180,
+      "Height": 170
+    },
+    "name": "Bedroom"
+  },
+  {
+    "rec": {
+      "X": 160,
+      "Y": 110,
+      "Width": 110,
+      "Height": 140
+    },
+    "name": "Dining room"
+  }
+]

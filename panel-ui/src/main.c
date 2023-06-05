@@ -38,8 +38,6 @@ int main(int argc, char *argv[])
 
 	InitWindow(screenWidth, screenHeight, "Raysidence - Smart home tools powered by raylib");
 
-	SetTargetFPS(60);
-
 	SetExitKey(KEY_NULL);
 
 	while (!WindowShouldClose() && !shouldClose)
@@ -60,6 +58,8 @@ int main(int argc, char *argv[])
 				break;
 			}
 		}
+
+		DrawFPS(10, 10);
 		EndDrawing();
 	}
 
