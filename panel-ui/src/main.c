@@ -5,6 +5,9 @@
 #include "dialog.h"
 #include "coolmouse.h"
 
+#define RINI_IMPLEMENTATION
+#include "rini.h"
+
 #define MODE_USE 0
 #define MODE_EDIT 1
 

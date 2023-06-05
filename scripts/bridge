@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+
+# BRIDGE_USERNAME
+# BRIDGE_ADDR
+# BRIDGE_NAME
+
+set -Eeuo pipefail
+
+function update_source {
+	if [ -f ./data/bridge ]; then
+		source ./data/bridge
+	fi
+	
+	if [ -f ./data/username ]; then
+		source ./data/username
+	fi
+}
+
+function api_call {
+	local METHOD=$1
+	local API_PATH=$2
+	local BODY=$3
+
+	pushd $(dirname ${BASH_SOURCE[0]}) > /dev/null
+
+	if [ "$METHOD" = "GET" ]; then
+		RESPONSE=`curl --cacert ../hue-ca.pem --resolve "$BRIDGE_NAME:443:$BRIDGE_ADDR" -X GET -s https://$BRIDGE_NAME$API_PATH | jq .`
+	else
+		RESPONSE=`curl --cacert ../hue-ca.pem --resolve "$BRIDGE_NAME:443:$BRIDGE_ADDR" -X $METHOD -s -H "Content-Type: application/json" --data "$BODY" https://$BRIDGE_NAME$API_PATH | jq .`
+	fi
+
+	popd > /dev/null
+
+	echo "$RESPONSE"
+}
+
+function username_call {
+	local METHOD=$1
+	local API_PATH=$2
+	local BODY=$3
+
+	RESPONSE=`api_call "$METHOD" "/api/$BRIDGE_USERNAME$API_PATH" "$BODY"`
+	echo "$RESPONSE"
+}
+
+function discover_bridge {
+	BRIDGE=`curl -s "https://discovery.meethue.com/" | jq .[]` 
+
+	ID=`echo "$BRIDGE" | jq -r .id`
+	IP=`echo "$BRIDGE" | jq -r .internalipaddress`
+	PORT=`echo "$BRIDGE" | jq .port`
+
+	pushd $(dirname ${BASH_SOURCE[0]}) > /dev/null
+
+	mkdir -p ../data/
+
+	echo "export BRIDGE_ADDR=$IP" > ../data/bridge
+	echo "export BRIDGE_NAME=$ID" >> ../data/bridge
+
+	popd > /dev/null
+}
+
+function get_username {
+	RESPONSE=`api_call "POST" "/api" "{\"devicetype\":\"raysidence_panel\"}" | jq .[]`
+
+	ERROR=`echo "$RESPONSE" | jq .error`
+	SUCCESS=`echo "$RESPONSE" | jq .success`
+
+	if [ "$SUCCESS" != null ]; then
+		USERNAME=`echo "$SUCCESS" | jq -r .username`
+		if [ "$USERNAME" != null ]; then
+			pushd $(dirname ${BASH_SOURCE[0]}) > /dev/null
+			echo "export BRIDGE_USERNAME=$USERNAME" > ../data/username
+			popd > /dev/null
+		fi
+	fi
+
+	if [ "$ERROR" != null ]; then
+		ERROR_TYPE=`echo "$ERROR" | jq -r .type`
+		if [ "$ERROR_TYPE" != null ]; then
+			exit $ERROR_TYPE
+		fi
+	fi
+}
+
+function get_groups {
+	echo "get_groups"
+	
+}
+
+update_source
+
+case $1 in
+discover)
+	echo "[$(date)] Discovering bridge..."
+	discover_bridge
+	;;
+username)
+	echo "[$(date)] Requesting username..."
+	get_username
+	;;
+groups)
+	echo "[$(date)] Updating groups..."
+	pwd
+	RESPONSE=$(curl --cacert ./hue-ca.pem --resolve "$BRIDGE_NAME:443:$BRIDGE_ADDR" -X GET -s https://$BRIDGE_NAME/api/$BRIDGE_USERNAME/groups | jq .)
+	echo "$RESPONSE"
+	;;
+esac

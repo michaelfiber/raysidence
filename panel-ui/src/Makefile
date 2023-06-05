@@ -5,6 +5,7 @@ BIN_NAME 	= panel
 FILES = button.c \
 	coolmouse.c \
 	dialog.c \
+	hue.c \
 	main.c 
 
 LIBS = -lraylib -lm -ldl -lGL -lpthread
