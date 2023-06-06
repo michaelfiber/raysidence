@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"main/internal"
 	"main/internal/gridshape"
 	"main/internal/gui"
@@ -20,6 +21,11 @@ type Room struct {
 	GroupIndex int
 }
 
+type Sprite struct {
+	Rec  rl.Rectangle
+	Fade float32
+}
+
 var (
 	stage         int
 	startingVec2I gridshape.Vector2I
@@ -33,6 +39,7 @@ var (
 	selectedRoom  int
 	center        gridshape.Vector2I
 	isEditing     bool
+	sprites       []Sprite
 
 	saveButton gui.Button = gui.Button{
 		Rec: rl.Rectangle{
@@ -61,12 +68,89 @@ var (
 	}
 )
 
+func removeSprite(index int) {
+	sprites[index] = sprites[len(sprites)-1]
+	sprites = sprites[:len(sprites)-1]
+}
+
+func updateSprites() {
+	var toRemove []Sprite
+
+	for i := range sprites {
+		sprite := sprites[i]
+
+		d := rl.GetFrameTime() * 50
+		sprite.Rec.X -= d
+		sprite.Rec.Y -= d
+		sprite.Rec.Width += d * 2
+		sprite.Rec.Height += d * 2
+		sprite.Fade -= rl.GetFrameTime()
+		if sprite.Fade <= 0 {
+			toRemove = append(toRemove, sprite)
+		}
+		rl.TraceLog(rl.LogInfo, fmt.Sprintf("\tfade level: %f", sprite.Fade))
+
+		sprites[i] = sprite
+	}
+
+	for _, sprite := range toRemove {
+		for i := range sprites {
+			if sprites[i] == sprite {
+				removeSprite(i)
+				break
+			}
+		}
+	}
+}
+
+func drawSprites() {
+	for _, sprite := range sprites {
+		//rl.DrawRectangleLinesEx(sprite.Rec, rl.GetFrameTime()*50, rl.Fade(rl.White, sprite.Fade))
+		rl.DrawRectangleRoundedLines(sprite.Rec, (1 - sprite.Fade), 32, rl.GetFrameTime()*50, rl.Fade(rl.White, sprite.Fade))
+	}
+}
+
+func addSprite(roomName string) {
+	for _, room := range rooms {
+		if room.Name == roomName {
+			rl.TraceLog(rl.LogInfo, fmt.Sprintf("adding sprite for %s: (%v)", roomName, room.Rec))
+			sprites = append(sprites, Sprite{
+				Rec:  room.Rec,
+				Fade: 0.75,
+			})
+		}
+	}
+}
+
 func Connect() {
 	server := internal.Server
 	username := internal.Username
 
 	// get rooms
-	groups = hue.GetGroups(server, username)
+	newGroups := hue.GetGroups(server, username)
+
+	for _, newGroup := range newGroups {
+		// Get a list of indices for the groups slice that are present in this update.
+		toUpdate := helper.FilteredMap(groups, func(index int, item hue.Group) (int, bool) {
+			if item.Name == newGroup.Name {
+				return index, true
+			}
+			return -1, false
+		})
+
+		if len(toUpdate) > 0 {
+			for _, i := range toUpdate {
+				if groups[i].State.AllOn != newGroup.State.AllOn || groups[i].State.AnyOn != newGroup.State.AnyOn {
+					rl.TraceLog(rl.LogInfo, fmt.Sprintf("Fire off a sprite for %s", newGroup.Name))
+					addSprite(newGroup.Name)
+				}
+				groups[i].State.AllOn = newGroup.State.AllOn
+				groups[i].State.AnyOn = newGroup.State.AnyOn
+			}
+		} else {
+			groups = append(groups, newGroup)
+		}
+	}
 
 	// get lights
 	lights = hue.GetLights(server, username)
@@ -146,8 +230,10 @@ func UpdateRooms(full bool) {
 
 func RoomUpdateLoop() {
 	for {
-		UpdateRooms(false)
-		time.Sleep(1 * time.Second)
+		if !isEditing {
+			UpdateRooms(false)
+		}
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -180,19 +266,35 @@ func main() {
 }
 
 func Use() {
-	rl.BeginDrawing()
-	rl.ClearBackground(rl.Black)
 
-	for _, room := range rooms {
-		c := rl.Gray
-		if room.GroupIndex > -1 && groups[room.GroupIndex].State.AnyOn {
-			c = rl.White
-		}
-		rl.DrawRectangleRec(room.Rec, c)
-		rl.DrawText(strings.ReplaceAll(room.Name, " ", "\n"), int32(room.Rec.X)+10, int32(room.Rec.Y)+8, rl.GetFontDefault().BaseSize*2, rl.Black)
+	updateSprites()
+
+	rl.BeginDrawing()
+	defer rl.EndDrawing()
+
+	fadeColor := rl.Fade(rl.Black, 0.05)
+	rl.DrawRectangle(0, 0, int32(rl.GetScreenWidth()), int32(rl.GetScreenHeight()), fadeColor)
+
+	drawSprites()
+
+	for i := 0; i < 3; i++ {
+		x := rl.GetRandomValue(0, int32(rl.GetScreenWidth()))
+		y := rl.GetRandomValue(0, int32(rl.GetScreenHeight()))
+		rl.DrawRectangle(x, y, 10, 10, rl.Fade(rl.Green, 0.25))
 	}
 
-	rl.EndDrawing()
+	for _, room := range rooms {
+
+		if room.GroupIndex > -1 && groups[room.GroupIndex].State.AnyOn {
+			rl.DrawRectangleRec(room.Rec, rl.White)
+		}
+
+		rl.DrawRectangleLinesEx(room.Rec, 2.0, rl.White)
+
+		rl.DrawText(strings.ReplaceAll(room.Name, " ", "\n"), int32(room.Rec.X)+11, int32(room.Rec.Y)+9, rl.GetFontDefault().BaseSize*2, rl.Black)
+		rl.DrawText(strings.ReplaceAll(room.Name, " ", "\n"), int32(room.Rec.X)+10, int32(room.Rec.Y)+8, rl.GetFontDefault().BaseSize*2, rl.Yellow)
+	}
+
 }
 
 func Edit() {

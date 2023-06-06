@@ -8,8 +8,10 @@ import (
 )
 
 type Light struct {
-	Name  string `json:"name"`
-	Type  string `json:"type"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	UniqueId string `json:"uniqueid"`
+
 	State struct {
 		On         bool      `json:"on"`
 		Brightness int32     `json:"bri"`
