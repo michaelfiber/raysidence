@@ -15,24 +15,11 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type Room struct {
-	Rec        rl.Rectangle `json:"rec"`
-	Name       string       `json:"name"`
-	GroupIndex int
-}
-
-type Sprite struct {
-	Rec  rl.Rectangle
-	Fade float32
-}
-
 var (
 	stage         int
 	startingVec2I gridshape.Vector2I
 	currentRecI   gridshape.RectangleI
-	currentText   string
 	rooms         []Room
-	nameLengthMax int = 32
 	groups        []hue.Group
 	lights        map[string]hue.Light
 	changeCount   int = 0
@@ -40,6 +27,13 @@ var (
 	center        gridshape.Vector2I
 	isEditing     bool
 	sprites       []Sprite
+	primaryCol    rl.Color = rl.Red
+	darkCol       rl.Color = rl.Color{
+		R: 160,
+		G: 0,
+		B: 0,
+		A: 200,
+	}
 
 	saveButton gui.Button = gui.Button{
 		Rec: rl.Rectangle{
@@ -67,60 +61,6 @@ var (
 		Fg:   rl.Black,
 	}
 )
-
-func removeSprite(index int) {
-	sprites[index] = sprites[len(sprites)-1]
-	sprites = sprites[:len(sprites)-1]
-}
-
-func updateSprites() {
-	var toRemove []Sprite
-
-	for i := range sprites {
-		sprite := sprites[i]
-
-		d := rl.GetFrameTime() * 50
-		sprite.Rec.X -= d
-		sprite.Rec.Y -= d
-		sprite.Rec.Width += d * 2
-		sprite.Rec.Height += d * 2
-		sprite.Fade -= rl.GetFrameTime()
-		if sprite.Fade <= 0 {
-			toRemove = append(toRemove, sprite)
-		}
-		rl.TraceLog(rl.LogInfo, fmt.Sprintf("\tfade level: %f", sprite.Fade))
-
-		sprites[i] = sprite
-	}
-
-	for _, sprite := range toRemove {
-		for i := range sprites {
-			if sprites[i] == sprite {
-				removeSprite(i)
-				break
-			}
-		}
-	}
-}
-
-func drawSprites() {
-	for _, sprite := range sprites {
-		//rl.DrawRectangleLinesEx(sprite.Rec, rl.GetFrameTime()*50, rl.Fade(rl.White, sprite.Fade))
-		rl.DrawRectangleRoundedLines(sprite.Rec, (1 - sprite.Fade), 32, rl.GetFrameTime()*50, rl.Fade(rl.White, sprite.Fade))
-	}
-}
-
-func addSprite(roomName string) {
-	for _, room := range rooms {
-		if room.Name == roomName {
-			rl.TraceLog(rl.LogInfo, fmt.Sprintf("adding sprite for %s: (%v)", roomName, room.Rec))
-			sprites = append(sprites, Sprite{
-				Rec:  room.Rec,
-				Fade: 0.75,
-			})
-		}
-	}
-}
 
 func Connect() {
 	server := internal.Server
@@ -233,7 +173,7 @@ func RoomUpdateLoop() {
 		if !isEditing {
 			UpdateRooms(false)
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(2500 * time.Millisecond)
 	}
 }
 
@@ -243,7 +183,7 @@ func main() {
 
 	rl.SetTargetFPS(30)
 
-	rl.InitWindow(800, 480, "Raysidence")
+	rl.InitWindow(320, 200, "Raysidence")
 	defer rl.CloseWindow()
 
 	center.X = int32(rl.GetScreenWidth() / 2)
@@ -267,34 +207,65 @@ func main() {
 
 func Use() {
 
+	// Update
 	updateSprites()
 
+	// Draw
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
 
-	fadeColor := rl.Fade(rl.Black, 0.05)
+	fadeColor := rl.Fade(rl.Black, 0.07)
 	rl.DrawRectangle(0, 0, int32(rl.GetScreenWidth()), int32(rl.GetScreenHeight()), fadeColor)
 
 	drawSprites()
 
-	for i := 0; i < 3; i++ {
-		x := rl.GetRandomValue(0, int32(rl.GetScreenWidth()))
-		y := rl.GetRandomValue(0, int32(rl.GetScreenHeight()))
-		rl.DrawRectangle(x, y, 10, 10, rl.Fade(rl.Green, 0.25))
+	for i := 0; i < 2; i++ {
+		x := rl.GetRandomValue(0, int32(rl.GetScreenWidth())) / 50 * 50
+		y := rl.GetRandomValue(0, int32(rl.GetScreenHeight())) / 50 * 50
+		rl.DrawRectangle(x, y, 50, 50, rl.Fade(darkCol, 0.1))
 	}
 
 	for _, room := range rooms {
 
-		if room.GroupIndex > -1 && groups[room.GroupIndex].State.AnyOn {
-			rl.DrawRectangleRec(room.Rec, rl.White)
+		if room.GroupIndex < 0 || room.GroupIndex > len(groups) || len(groups) == 0 {
+			continue
 		}
 
-		rl.DrawRectangleLinesEx(room.Rec, 2.0, rl.White)
+		if groups[room.GroupIndex].State.AnyOn {
+			rl.DrawRectangleRec(room.Rec, rl.Fade(darkCol, 0.05))
+		}
 
-		rl.DrawText(strings.ReplaceAll(room.Name, " ", "\n"), int32(room.Rec.X)+11, int32(room.Rec.Y)+9, rl.GetFontDefault().BaseSize*2, rl.Black)
-		rl.DrawText(strings.ReplaceAll(room.Name, " ", "\n"), int32(room.Rec.X)+10, int32(room.Rec.Y)+8, rl.GetFontDefault().BaseSize*2, rl.Yellow)
+		rl.DrawRectangleLinesEx(room.Rec, 2.0, primaryCol)
+		flicker := rl.GetRandomValue(0, 18) - 6
+		rl.DrawRectangleLinesEx(
+			rl.Rectangle{
+				X:      room.Rec.X - float32(flicker),
+				Y:      room.Rec.Y - float32(flicker),
+				Width:  room.Rec.Width + float32(flicker*2),
+				Height: room.Rec.Height + float32(flicker*2),
+			},
+			(1-float32(flicker+6)/18)*5,
+			rl.Fade(darkCol, 0.1),
+		)
+
+		rl.DrawText(strings.ReplaceAll(room.Name, " ", "\n"), int32(room.Rec.X)+10, int32(room.Rec.Y)+8, rl.GetFontDefault().BaseSize*3, primaryCol)
+
+		for i, lightKey := range groups[room.GroupIndex].Lights {
+			lightRec := rl.NewRectangle(
+				room.Rec.X+5,
+				room.Rec.Y+room.Rec.Height-float32(25-i*-25),
+				20,
+				20,
+			)
+			rl.DrawRectangleLinesEx(lightRec, 2.0, primaryCol)
+
+			if lights[lightKey].State.On {
+				rl.DrawRectangleRec(lightRec, primaryCol)
+			}
+
+			rl.DrawText(lights[lightKey].Name, int32(lightRec.X+lightRec.Width+5), int32(lightRec.Y+5), rl.GetFontDefault().BaseSize, primaryCol)
+		}
 	}
-
 }
 
 func Edit() {
@@ -336,7 +307,6 @@ func Edit() {
 					Rec:  currentRecI.Rectangle(),
 					Name: "",
 				})
-				currentText = ""
 				stage++
 			} else {
 				stage = 0
