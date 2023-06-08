@@ -2,6 +2,7 @@
 #include "sprites.h"
 #include "rooms.h"
 #include "hue.h"
+#include "update.h"
 
 int selectedRoom = -1;
 int stage = -1;
@@ -18,7 +19,8 @@ void DrawBackgroundGrid(Color color);
 
 int main()
 {
-
+	StartMQThread();
+	
 	InitWindow(800, 480, "raysidence");
 
 	bgFadedBlack = Fade(BLACK, 0.07f);
