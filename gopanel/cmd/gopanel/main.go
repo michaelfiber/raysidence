@@ -183,7 +183,7 @@ func main() {
 
 	rl.SetTargetFPS(30)
 
-	rl.InitWindow(320, 200, "Raysidence")
+	rl.InitWindow(800, 480, "Raysidence")
 	defer rl.CloseWindow()
 
 	center.X = int32(rl.GetScreenWidth() / 2)
