@@ -8,3 +8,10 @@ build:
 
 run: build
 	../../bin/$(BIN_NAME)
+
+build.test-client:
+	mkdir -p ../../bin
+	gcc test-sender.c -o ../../bin/test-client -lrt
+
+run.test-client: build.test-client
+	../../bin/test-client

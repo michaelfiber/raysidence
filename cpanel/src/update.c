@@ -2,49 +2,41 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
-#include <mqueue.h>
 #include "update.h"
 #include "pthread.h"
+#include <unistd.h>
 
-#define MAX_SIZE 1024
-#define MSG_STOP "exit"
-#define QUEUE_NAME "/raysidence"
 
-void *MessageQueueThread(void *arg);
+#define MAX_SIZE 32
+#define QUEUE_NAME "/raysidence-info"
 
-void StartMQThread()
+void *UpdateThread(void *arg);
+
+void StartUpdateThread()
 {
 	pthread_t pid = -1;
 
-	pthread_create(&pid, NULL, MessageQueueThread, NULL);
+	pthread_create(&pid, NULL, UpdateThread, NULL);
 
 	TraceLog(LOG_INFO, TextFormat("Update thread started: %d", pid));
 }
 
-void *MessageQueueThread(void *arg)
+void *UpdateThread(void *arg)
 {
-	mqd_t mq;
-	char buffer[MAX_SIZE + 1];
-	bool keep_going = true;
+	int sfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-	mq = mq_open(QUEUE_NAME, O_CREAT | O_RDONLY);
-	if (-1 == mq)
-	{
-		TraceLog(LOG_ERROR, "Failed to open message queue.");
+	if (sfd == -1) {
+		printf("could not open socket");
 		return;
 	}
 
-	do
+	while (true)
 	{
-		ssize_t c = mq_receive(mq, buffer, MAX_SIZE, NULL);
-		if (c == 0)
-			continue;
-
-		buffer[c] = '\0';
-
-		printf("\n\nReceived message: %s\n\n", buffer);
-	} while (keep_going);
+		printf("Hello\n");
+		sleep(5);	
+	}
 }

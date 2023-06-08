@@ -19,7 +19,7 @@ void DrawBackgroundGrid(Color color);
 
 int main()
 {
-	StartMQThread();
+	StartUpdateThread();
 	
 	InitWindow(800, 480, "raysidence");
 
