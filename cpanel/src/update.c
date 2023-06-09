@@ -10,10 +10,10 @@
 #include "pthread.h"
 #include <unistd.h>
 #define CISSON_IMPLEMENTATION
-#include "cisson/cisson.h"
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "json/json.h"
 
 #define MAX_SIZE 32
 #define QUEUE_NAME "/raysidence-info"
@@ -107,22 +107,16 @@ void *UpdateThread(void *arg)
 {
 	while (true)
 	{
-		sleep(3);
+		sleep(1);
 
 		char *group_response = hue_query("groups");
 		char *light_response = hue_query("lights");
 
-		if (group_response == NULL || light_response == NULL)
-		{
-			continue;
-		}
+		struct json_value_s *root = json_parse(group_response, strlen(group_response)); 
+		struct json_object_s *rootObj = (struct json_object_s*)root->payload;
 
-		struct json_tree group_tree = {0};
-		rjson(group_response, &group_tree);
-
-		struct token *root, *cur;
-		root = query(&group_tree, "/");
-		printf("%s\n", root->address);
+		struct json_values_s *val = rootObj->start;
+		// TODO PARSE THE JSON
 	}
 }
 
