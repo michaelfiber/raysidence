@@ -87,7 +87,7 @@ char *hue_query(char *cmd)
 	close(sockfd);
 
 	int response_body_index = -1;
-	for (int i = 0; i < total_size-10; i++)
+	for (int i = 0; i < total_size - 10; i++)
 	{
 		if (strncmp("\r\n\r\n", &response[i], 4) == 0)
 		{
@@ -95,9 +95,8 @@ char *hue_query(char *cmd)
 		}
 	}
 
-	
-
-	if (response_body_index > -1) {
+	if (response_body_index > -1)
+	{
 		return &response[response_body_index];
 	}
 
@@ -108,27 +107,31 @@ void *UpdateThread(void *arg)
 {
 	while (true)
 	{
-		printf("Update\n");
+		sleep(3);
 
-		char *response = hue_query("groups");
-		
-		if (response != NULL) {
-			printf("Found this JSON for groups: %s\n", response);
+		char *group_response = hue_query("groups");
+		char *light_response = hue_query("lights");
+
+		if (group_response == NULL || light_response == NULL)
+		{
+			continue;
 		}
 
-		struct json_tree json_tree = {0};
-		rjson(response, &json_tree);
-		printf("json parsed as:\n");
-		puts(to_string_pointer(&json_tree, query(&json_tree, "/1/Name")));
-		
-		sleep(5);
+		struct json_tree group_tree = {0};
+		rjson(group_response, &group_tree);
+
+		struct token *root, *cur;
+		root = query(&group_tree, "/");
+		printf("%s\n", root->address);
 	}
 }
 
 void StartUpdateThread()
 {
+	printf("Getting env variables...");
 	hue_key = getenv("HUE_KEY");
-	hue_server_ip = getenv("HUE_SERVER");
+	hue_server_ip = getenv("HUE_SERVER_IP");
+	printf("Done!\n");
 
 	pthread_t pid = -1;
 
