@@ -1,6 +1,8 @@
 {
 	"files.associations": {
-		"cisson.h": "c"
+		"cisson.h": "c",
+		"stat.h": "c",
+		"netdb.h": "c"
 	},
 	"cmake.configureOnOpen": true
 }

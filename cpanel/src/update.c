@@ -14,6 +14,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "json/json.h"
+#include "json/dumb.h"
 
 #define MAX_SIZE 32
 #define QUEUE_NAME "/raysidence-info"
@@ -25,16 +26,18 @@ char *hue_key;
 
 #define MAX_LINE 16000
 
-char response[32768] = {0};
-
 void Fail(char *msg)
 {
 	printf("[update.c - ERROR] %s\n", msg);
 	exit(1);
 }
 
+char response[32768] = {0};
+
 char *hue_query(char *cmd)
 {
+	memset(&response, 0, 32768);
+
 	int total_size = 0;
 	char sendline[1024];
 	char buffer[BUFSIZ];
@@ -108,15 +111,13 @@ void *UpdateThread(void *arg)
 	while (true)
 	{
 		sleep(1);
-
 		char *group_response = hue_query("groups");
-		char *light_response = hue_query("lights");
 
-		struct json_value_s *root = json_parse(group_response, strlen(group_response)); 
-		struct json_object_s *rootObj = (struct json_object_s*)root->payload;
+		printf("%s\n", group_response);
 
-		struct json_values_s *val = rootObj->start;
-		// TODO PARSE THE JSON
+		struct json_value_s *root = json_parse(group_response, strlen(group_response));
+
+		Pathify(root, "");
 	}
 }
 
