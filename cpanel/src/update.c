@@ -117,7 +117,39 @@ void *UpdateThread(void *arg)
 
 		struct json_value_s *root = json_parse(group_response, strlen(group_response));
 
-		Pathify(root, "");
+		if (root->type != json_type_object)
+		{
+			continue;
+		}
+
+		struct json_object_s *o = (struct json_object_s *)root->payload;
+
+		struct json_object_element_s *e = o->start;
+		while (e != NULL)
+		{
+			struct json_object_s *group = (struct json_object_s *)e->value->payload;
+
+			char group_name[128] = {0};
+			int light_count = 0;
+
+			struct json_object_element_s *group_attribute = group->start;
+			while (group_attribute != NULL)
+			{
+				if (strcmp(group_attribute->name->string, "lights") == 0)
+				{
+					light_count = ((struct json_array_s *)group_attribute->value->payload)->length;
+				}
+				else if (strcmp(group_attribute->name->string, "name") == 0)
+				{
+					strncpy(group_name, ((struct json_string_s *)group_attribute->value->payload)->string, 63);
+				}
+				group_attribute = group_attribute->next;
+			}
+
+			printf("Group %s has %d lights.\n", group_name, light_count);
+
+			e = e->next;
+		}
 	}
 }
 

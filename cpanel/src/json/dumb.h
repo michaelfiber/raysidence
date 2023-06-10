@@ -16,6 +16,6 @@ typedef struct pathify {
 	struct pathify_node *root;
 };
 
-void Pathify(struct json_value_s *v, char *prefix);
+void Pathify(struct json_value_s *v);
 
 #endif

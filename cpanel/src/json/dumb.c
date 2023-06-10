@@ -69,7 +69,7 @@ void process_value(struct json_value_s *v, char *prefix)
 	}
 }
 
-void Pathify(struct json_value_s *v, char *prefix)
+void Pathify(struct json_value_s *v)
 {
-	process_value(v, prefix);
+	process_value(v, "");
 }
