@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 void process_value(struct json_value_s *v, char *prefix);
 void process_object(struct json_object_s *o, char *prefix);
@@ -72,4 +73,61 @@ void process_value(struct json_value_s *v, char *prefix)
 void Pathify(struct json_value_s *v)
 {
 	process_value(v, "");
+}
+
+struct json_object_element_s *get_key(struct json_object_s *o, char *key)
+{
+	struct json_object_element_s *t = o->start;
+	while (t != NULL)
+	{
+		if (strncmp(t->name->string, key, strlen(key)) == 0)
+		{
+			return t;
+		}
+		t = t->next;
+	}
+	return NULL;
+}
+
+struct json_object_element_s *get_key_bool(struct json_object_s *o, char *key, bool *result)
+{
+	struct json_object_element_s *e = get_key(o, key);
+	if (e != NULL)
+	{
+		*result = e->value->type == json_type_true;
+	}
+	return e;
+}
+
+struct json_object_element_s *get_key_object(struct json_object_s *o, char *key, struct json_object_s *result)
+{
+	struct json_object_element_s *e = get_key(o, key);
+	if (e != NULL)
+	{
+		result = (struct json_object_s *)e->value->payload;
+	}
+	return e;
+}
+
+struct json_object_element_s *get_key_number(struct json_object_s *o, char *key, char *result)
+{
+	struct json_object_element_s *e = get_key(o, key);
+	if (e != NULL)
+	{
+		strcpy(result, ((struct json_number_s *)e->value->payload)->number);
+	}
+	return e;
+}
+
+void fill_string_array(struct json_array_s *a, char *dest, int length, int count)
+{
+	struct json_array_element_s *e = a->start;
+	int i = 0;
+	while (e != NULL && i < count)
+	{
+		int index = i * length;
+		strncpy(dest + index, ((struct json_string_s *)e->value->payload)->string, length - 1);
+		i++;
+		e = e->next;
+	}
 }

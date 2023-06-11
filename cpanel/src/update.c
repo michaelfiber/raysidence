@@ -111,42 +111,88 @@ void *UpdateThread(void *arg)
 	while (true)
 	{
 		sleep(1);
-		char *group_response = hue_query("groups");
+		char *light_response = hue_query("lights");
 
-		printf("%s\n", group_response);
+		// get lights.
+		struct json_value_s *light_root = json_parse(light_response, strlen(light_response));
+
+		if (light_root->type != json_type_object)
+		{
+			printf("The /lights response was not an object :-(\n");
+			continue;
+		}
+
+		struct json_object_s *lights_o = (struct json_object_s *)light_root->payload;
+
+		// get groups.
+		char *group_response = hue_query("groups");
 
 		struct json_value_s *root = json_parse(group_response, strlen(group_response));
 
 		if (root->type != json_type_object)
 		{
+			printf("The /groups response was not an object :-(\n");
 			continue;
 		}
 
-		struct json_object_s *o = (struct json_object_s *)root->payload;
+		struct json_object_s *groups_o = (struct json_object_s *)root->payload;
 
-		struct json_object_element_s *e = o->start;
+		struct json_object_element_s *e = groups_o->start;
+
 		while (e != NULL)
 		{
 			struct json_object_s *group = (struct json_object_s *)e->value->payload;
 
 			char group_name[128] = {0};
 			int light_count = 0;
+			char lights[32 * 32] = {0};
+			struct json_object_element_s *search = get_key(group, "lights");
 
-			struct json_object_element_s *group_attribute = group->start;
-			while (group_attribute != NULL)
+			if (search != NULL)
 			{
-				if (strcmp(group_attribute->name->string, "lights") == 0)
-				{
-					light_count = ((struct json_array_s *)group_attribute->value->payload)->length;
-				}
-				else if (strcmp(group_attribute->name->string, "name") == 0)
-				{
-					strncpy(group_name, ((struct json_string_s *)group_attribute->value->payload)->string, 63);
-				}
-				group_attribute = group_attribute->next;
+				light_count = ((struct json_array_s *)search->value->payload)->length;
+				fill_string_array(((struct json_array_s *)search->value->payload), lights, 32, 32);
 			}
 
-			printf("Group %s has %d lights.\n", group_name, light_count);
+			search = get_key(group, "name");
+			if (search != NULL)
+			{
+				strncpy(group_name, ((struct json_string_s *)search->value->payload)->string, 63);
+			}
+
+			printf("[%s] has %d lights.\n", group_name, light_count);
+			for (int i = 0; i < 32; i++)
+			{
+				char *str = (&lights[0] + i * 32);
+				int length = strlen(str);
+				if (length > 0)
+				{
+					printf("\t- %s\n", str);
+					struct json_object_element_s *lo = get_key(lights_o, str);
+					if (lo != NULL)
+					{
+						search = get_key((struct json_object_s *)lo->value->payload, "state");
+						if (search != NULL)
+						{
+							struct json_object_s *state_o = ((struct json_object_s *)search->value->payload);
+							
+							bool light_on = false;
+							search = get_key_bool(state_o, "on", &light_on);
+							if (search != NULL)
+							{
+								printf("\t- on: %d\n", light_on);
+							}
+
+							char bri[32] = {0};
+							search = get_key_number(state_o, "bri", bri);
+							if (search != NULL)
+							{
+								printf("\t- brightness: %s\n", bri);
+							}
+						}
+					}
+				}
+			}
 
 			e = e->next;
 		}
