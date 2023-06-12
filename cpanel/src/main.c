@@ -4,6 +4,7 @@
 #include "hue.h"
 #include "update.h"
 #include "stdlib.h"
+#include "stdio.h"
 
 int selectedRoom = -1;
 int stage = -1;
@@ -20,6 +21,7 @@ void DrawBackgroundGrid(Color color);
 
 int main()
 {
+	InitHue();
 	StartUpdateThread();
 
 	InitWindow(800, 600, "raysidence");
@@ -30,8 +32,6 @@ int main()
 	center.y = GetScreenHeight() / 2;
 
 	SetTargetFPS(30);
-
-	LoadRoomsJson();
 
 	TraceLog(LOG_INFO, "LoadRoomsJson is done.");
 
@@ -55,6 +55,37 @@ int main()
 void Use()
 {
 	UpdateSprites();
+
+	if (IsMouseButtonPressed(0))
+	{
+		for (int i = 0; i < ROOM_COUNT; i++)
+		{
+			if (!rooms[i].IsActive)
+				continue;
+
+			if (CheckCollisionPointRec(GetMousePosition(), rooms[i].Rec))
+			{
+				TraceLog(LOG_INFO, TextFormat("clicky click - %s", rooms[i].Name));
+				HueGroup *group = GetGroup(rooms[i].Name);
+				if (group != NULL)
+				{
+					int state = 0;
+					if (!group->AnyOn)
+					{
+						state = 1;
+					}
+					for (int i = 0; i < group->LightCount; i++)
+					{
+						HueLight *light = GetLight(group->Lights + i * 32);
+						if (light != NULL)
+						{
+							set_light(light->Key, state);
+						}
+					}
+				}
+			}
+		}
+	}
 
 	BeginDrawing();
 	{

@@ -33,11 +33,15 @@ extern HueGroup groups[HUE_GROUP_COUNT];
 #define HUE_LIGHT_COUNT 255
 extern HueLight lights[HUE_LIGHT_COUNT];
 
+void InitHue();
 void SetLight(HueLight light);
 HueLight *GetLight(const char *key);
 HueLight *NextFreeLight();
 HueGroup *GetGroup(const char *name);
 HueGroup *NextFreeGroup();
 void LogHueStuff(bool activeOnly);
+
+void set_light(char *light_name, int state);
+char *hue_query(char *cmd, char *method, char *body);
 
 #endif
