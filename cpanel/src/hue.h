@@ -3,18 +3,19 @@
 
 #include "raylib.h"
 
-typedef struct
+typedef struct HueGroup
 {
 	bool IsActive;
 	char Name[255];
 	int LightCount;
-	char Lights[255][255];
+	char Lights[32 * 32];
 	char Type[255];
 	bool AnyOn;
 	bool AllOn;
+	bool JustUpdated;
 } HueGroup;
 
-typedef struct
+typedef struct HueLight
 {
 	bool IsActive;
 	char Key[255];
@@ -23,6 +24,7 @@ typedef struct
 	char UniqueId[255];
 	bool On;
 	int Brightness;
+	bool JustUpdated;
 } HueLight;
 
 #define HUE_GROUP_COUNT 255
@@ -33,5 +35,9 @@ extern HueLight lights[HUE_LIGHT_COUNT];
 
 void SetLight(HueLight light);
 HueLight *GetLight(const char *key);
+HueLight *NextFreeLight();
+HueGroup *GetGroup(const char *name);
+HueGroup *NextFreeGroup();
+void LogHueStuff(bool activeOnly);
 
 #endif

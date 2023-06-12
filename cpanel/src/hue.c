@@ -49,3 +49,51 @@ HueLight *GetLight(const char *key)
 
 	return NULL;
 }
+
+HueLight *NextFreeLight()
+{
+	for (int i = 0; i < HUE_LIGHT_COUNT; i++)
+	{
+		if (!lights[i].IsActive)
+		{
+			lights[i].IsActive = true;
+			return &lights[i];
+		}
+	}
+	return NULL;
+}
+
+HueGroup *GetGroup(const char *name)
+{
+	for (int i = 0; i < HUE_GROUP_COUNT; i++)
+	{
+		if (strncmp(groups[i].Name, name, 255) == 0)
+		{
+			return &groups[i];
+		}
+	}
+
+	return NULL;
+}
+
+HueGroup *NextFreeGroup()
+{
+	for (int i = 0; i < HUE_GROUP_COUNT; i++)
+	{
+		if (!groups[i].IsActive)
+		{
+			groups[i].IsActive = true;
+			return &groups[i];
+		}
+	}
+	return NULL;
+}
+
+void LogHueStuff(bool activeOnly)
+{
+	for (int i = 0; i < HUE_GROUP_COUNT; i++)
+	{
+		if (activeOnly && !groups[i].IsActive) continue;
+		printf("Group details: %d\n\t%s\n\t%d\n\t%s\n\t%d\n\t%d\n\t%d\n", groups[i].IsActive, groups[i].Name, groups[i].LightCount, groups[i].Type, groups[i].AnyOn, groups[i].AllOn, groups[i].JustUpdated);
+	}
+}

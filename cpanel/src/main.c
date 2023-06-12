@@ -3,6 +3,7 @@
 #include "rooms.h"
 #include "hue.h"
 #include "update.h"
+#include "stdlib.h"
 
 int selectedRoom = -1;
 int stage = -1;
@@ -20,8 +21,8 @@ void DrawBackgroundGrid(Color color);
 int main()
 {
 	StartUpdateThread();
-	
-	InitWindow(800, 480, "raysidence");
+
+	InitWindow(800, 600, "raysidence");
 
 	bgFadedBlack = Fade(BLACK, 0.07f);
 
@@ -30,7 +31,9 @@ int main()
 
 	SetTargetFPS(30);
 
-	// TODO: Start update thread
+	LoadRoomsJson();
+
+	TraceLog(LOG_INFO, "LoadRoomsJson is done.");
 
 	while (!WindowShouldClose())
 	{
@@ -63,12 +66,15 @@ void Use()
 		{
 			if (!rooms[i].IsActive)
 				continue;
-			if (rooms[i].GroupIndex >= HUE_GROUP_COUNT)
-				continue;
 
 			Room room = rooms[i];
-			HueGroup group = groups[room.GroupIndex];
-			if (group.AnyOn)
+			HueGroup *group = GetGroup(room.Name);
+			if (group == NULL)
+			{
+				// it can take a second for the groups to load...
+				return;
+			}
+			if (group->AnyOn)
 			{
 				DrawRectangleRec(room.Rec, Fade(darkCol, 0.05));
 			}
@@ -81,8 +87,23 @@ void Use()
 									 .width = room.Rec.width + flicker * 2,
 									 .height = room.Rec.height + flicker * 2},
 								 1 - (flicker + 6) / 18, Fade(darkCol, 0.1f));
-			for (int j = 0; j < group.LightCount; j++) {
-				
+			DrawText(room.Name, room.Rec.x + 5, room.Rec.y + 5, GetFontDefault().baseSize * 2, primaryCol);
+			for (int j = 0; j < group->LightCount; j++)
+			{
+				HueLight *light = GetLight(group->Lights + j * 32);
+				if (light == NULL)
+				{
+					DrawText("X", room.Rec.x + 5, room.Rec.y + room.Rec.height - 25 - 25 * j, GetFontDefault().baseSize, primaryCol);
+				}
+				else
+				{
+					if (light->On)
+					{
+						DrawRectangle(room.Rec.x + 5, room.Rec.y + room.Rec.height - 25 - 25 * j, 20, 20, primaryCol);
+					}
+				}
+				DrawRectangleLines(room.Rec.x + 5, room.Rec.y + room.Rec.height - 25 - 25 * j, 20, 20, primaryCol);
+				DrawText(light->Name, room.Rec.x + 30, room.Rec.y + room.Rec.height - 20 - 25 * j, GetFontDefault().baseSize, primaryCol);
 			}
 		}
 	}

@@ -8,10 +8,11 @@
 typedef struct {
 	bool IsActive;
 	Rectangle Rec;
-	char *Name;
-	int GroupIndex;
+	char Name[255];
 } Room;
 
 extern Room rooms[ROOM_COUNT];
+
+void LoadRoomsJson();
 
 #endif

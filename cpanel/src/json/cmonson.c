@@ -1,4 +1,4 @@
-#include "dumb.h"
+#include "cmonson.h"
 #include "json.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,7 +75,7 @@ void Pathify(struct json_value_s *v)
 	process_value(v, "");
 }
 
-struct json_object_element_s *get_key(struct json_object_s *o, char *key)
+struct json_object_element_s *cos_get_key(struct json_object_s *o, char *key)
 {
 	struct json_object_element_s *t = o->start;
 	while (t != NULL)
@@ -89,9 +89,9 @@ struct json_object_element_s *get_key(struct json_object_s *o, char *key)
 	return NULL;
 }
 
-struct json_object_element_s *get_key_bool(struct json_object_s *o, char *key, bool *result)
+struct json_object_element_s *cos_get_key_bool(struct json_object_s *o, char *key, bool *result)
 {
-	struct json_object_element_s *e = get_key(o, key);
+	struct json_object_element_s *e = cos_get_key(o, key);
 	if (e != NULL)
 	{
 		*result = e->value->type == json_type_true;
@@ -99,19 +99,19 @@ struct json_object_element_s *get_key_bool(struct json_object_s *o, char *key, b
 	return e;
 }
 
-struct json_object_element_s *get_key_object(struct json_object_s *o, char *key, struct json_object_s *result)
+struct json_object_element_s *cos_get_key_object(struct json_object_s *o, char *key, struct json_object_s **result)
 {
-	struct json_object_element_s *e = get_key(o, key);
+	struct json_object_element_s *e = cos_get_key(o, key);
 	if (e != NULL)
 	{
-		result = (struct json_object_s *)e->value->payload;
+		*result = (struct json_object_s *)e->value->payload;
 	}
 	return e;
 }
 
-struct json_object_element_s *get_key_number(struct json_object_s *o, char *key, char *result)
+struct json_object_element_s *cos_get_key_number(struct json_object_s *o, char *key, char *result)
 {
-	struct json_object_element_s *e = get_key(o, key);
+	struct json_object_element_s *e = cos_get_key(o, key);
 	if (e != NULL)
 	{
 		strcpy(result, ((struct json_number_s *)e->value->payload)->number);
@@ -119,7 +119,29 @@ struct json_object_element_s *get_key_number(struct json_object_s *o, char *key,
 	return e;
 }
 
-void fill_string_array(struct json_array_s *a, char *dest, int length, int count)
+struct json_object_element_s *cos_get_key_int(struct json_object_s *o, char *key, int *result)
+{
+	char num_str[128] = {0};
+	struct json_object_element *e = cos_get_key_number(o, key, num_str);
+	if (e != NULL)
+	{
+		*result = atoi(num_str);
+		return e;
+	}
+	return NULL;
+}
+
+struct json_object_element_s *cos_get_key_string(struct json_object_s *o, char *key, char *result)
+{
+	struct json_object_element_s *e = cos_get_key(o, key);
+	if (e != NULL)
+	{
+		strcpy(result, ((struct json_string_s *)e->value->payload)->string);
+	}
+	return e;
+}
+
+void cos_fill_string_array(struct json_array_s *a, char *dest, int length, int count)
 {
 	struct json_array_element_s *e = a->start;
 	int i = 0;
