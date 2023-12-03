@@ -5,9 +5,11 @@
 #include <unistd.h>
 #include <linux/input.h>
 #include <string.h>
-
+#include <time.h>
 char *server;
 char *key;
+char time_display[4096];
+char temp_display[4096];
 
 typedef struct
 {
@@ -15,12 +17,97 @@ typedef struct
     char name[4096];
 } Group;
 
+typedef struct
+{
+    int hue;
+    int sat;
+    Color preview;
+} HueSat;
+
+HueSat hue_sats[] = {
+    {7820, 191, WHITE},
+    {207, 254, RED},
+    {54776, 249, PURPLE},
+    {25500, 249, GREEN},
+    {46920, 249, BLUE}};
+
+int hue_sat_count = 5;
+
 Group groups[16];
 int group_count = 0;
 int current_group = -1;
+float time_countdown = -1.0f;
+float temp_countdown = -1.0f;
 
+// Accepts server, key, group id, brightness as an int from 0 to 255
 char cmd_group_on[] = "curl -s -X PUT http://%s.local/api/%s/groups/%s/action --data '{\"on\":true,\"bri\":%d}'";
+
+// accepts server, key, group id, hue as an int from 0 to 65K, sat as an int from 0 to 255
+char cmd_group_hue_sat[] = "curl -s -X PUT http://%s.local/api/%s/groups/%s/action --data '{\"on\":true,\"hue\":%d,\"sat\":%d}'";
+
+// accepts server, key, group id
 char cmd_group_off[] = "curl -s -X PUT http://%s.local/api/%s/groups/%s/action --data '{\"on\":false}'";
+
+void draw_temp(int x, int y)
+{
+    temp_countdown -= GetFrameTime();
+    static int text_size = 0;
+
+    if (temp_countdown < 0.0f)
+    {
+        temp_countdown = 1.0f;
+        FILE *f = fopen("temp.txt", "r");
+
+        if (f == NULL)
+        {
+            printf("Could not open temp.txt\n");
+            return;
+        }
+
+        char c;
+        int i = 0;
+        temp_display[0] = '\0';
+
+        do
+        {
+            c = fgetc(f);
+            if (c == '\n')
+            {
+                temp_display[i++] = '\0';
+                break;
+            }
+            temp_display[i++] = c;
+        } while (c != EOF && c != 255);
+
+        fclose(f);
+
+        text_size = MeasureText(temp_display, GetFontDefault().baseSize * 3);
+    }
+
+    DrawText(temp_display, x - text_size, y, GetFontDefault().baseSize * 3, RED);
+}
+
+void draw_time(int x, int y)
+{
+    time_countdown -= GetFrameTime();
+
+    if (time_countdown < 0.0f)
+    {
+        time_countdown = 1.0f;
+        time_t raw_time;
+        struct tm *timeinfo;
+        time(&raw_time);
+        timeinfo = localtime(&raw_time);
+        int hours = timeinfo->tm_hour;
+        if (hours > 12)
+        {
+            hours -= 12;
+        }
+        sprintf(time_display, "%d:%02d:%02d", hours, timeinfo->tm_min, timeinfo->tm_sec);
+    }
+
+    DrawText(time_display, x, y, GetFontDefault().baseSize * 5, RED);
+}
 
 void set_level(int level)
 {
@@ -29,11 +116,18 @@ void set_level(int level)
     if (level > 0)
     {
         sprintf(cmd, cmd_group_on, server, key, groups[current_group].code, bri);
-    } 
+    }
     else
     {
         sprintf(cmd, cmd_group_off, server, key, groups[current_group].code);
     }
+    system(cmd);
+}
+
+void set_color(int hue_sat)
+{
+    char cmd[4096];
+    sprintf(cmd, cmd_group_hue_sat, server, key, groups[current_group].code, hue_sats[hue_sat].hue, hue_sats[hue_sat].sat);
     system(cmd);
 }
 
@@ -66,7 +160,6 @@ void read_groups()
         else if (c == '\n')
         {
             chunk[i++] = '\0';
-            printf("Code: %d Chunk: %s\n", current_code, chunk);
             sprintf(groups[group_count].code, "%d", current_code);
             sprintf(groups[group_count].name, "%s", chunk);
             group_count++;
@@ -77,8 +170,7 @@ void read_groups()
         {
             chunk[i++] = c;
         }
-    } while (c != EOF);
-
+    } while (c != EOF && c != 255);
     fclose(f);
 }
 
@@ -99,8 +191,8 @@ void update_top_menu()
                 current_group = i;
             }
 
-            DrawRectangle(25 + x * 380, 25 + y * 110, 370, 100, MAROON);
-            DrawText(groups[i].name, 35 + x * 380, 40 + y * 110, 50, BLACK);
+            DrawRectangleLines(25 + x * 380, 25 + y * 110, 370, 100, RED);
+            DrawText(groups[i].name, 35 + x * 380, 40 + y * 110, 50, RED);
             i++;
             if (i == group_count)
                 break;
@@ -108,23 +200,38 @@ void update_top_menu()
         if (i == group_count)
             break;
     }
+
+    draw_time(25, 415);
+    draw_temp(775, 435);
 }
 
 void update_group()
 {
-    DrawText(groups[current_group].name, 10, 10, 80, MAROON);
+    DrawText(groups[current_group].name, 10, 10, 80, RED);
 
     for (int i = 0; i < 10; i++)
     {
         Color bg = Fade(WHITE, (float)i / 9.0f);
         DrawRectangle(30 + i * 75, 350, 65, 50, bg);
-        DrawRectangleLines(30 + i * 75, 350, 65, 50, MAROON);
+        DrawRectangleLines(30 + i * 75, 350, 65, 50, RED);
         if (IsMouseButtonPressed(0) &&
             CheckCollisionPointRec(GetMousePosition(), (Rectangle){
                                                            30 + i * 75, 350, 65, 50}))
         {
-            // set the group brightness
             set_level(i);
+            current_group = -1;
+        }
+    }
+
+    for (int i = 0; i < hue_sat_count; i++)
+    {
+        DrawRectangle(30 + i * 75, 200, 65, 50, hue_sats[i].preview);
+        DrawRectangleLines(30 + i * 75, 200, 65, 50, RED);
+        if (IsMouseButtonPressed(0) &&
+            CheckCollisionPointRec(GetMousePosition(), (Rectangle){
+                                                           30 + i * 75, 200, 65, 50}))
+        {
+            set_color(i);
             current_group = -1;
         }
     }
