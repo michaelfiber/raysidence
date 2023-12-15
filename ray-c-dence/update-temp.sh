@@ -5,6 +5,6 @@ set -Eeuo pipefail
 source ./creds.sh
 
 while :; do
-    curl -s wttr.in/$HOME_TOWN?format=j2 | jq -r '.current_condition[0].weatherDesc[0].value + ", " + .current_condition[0].temp_F + "°F"' > temp.txt
-    sleep 1800
+    curl -s "$WEATHER_URL" | jq -r '(.current.temp|tostring) + "°F, " + .current.weather[0].main' > temp.txt
+    sleep 240
 done

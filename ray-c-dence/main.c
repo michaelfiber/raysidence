@@ -6,10 +6,13 @@
 #include <linux/input.h>
 #include <string.h>
 #include <time.h>
+
 char *server;
 char *key;
 char time_display[4096];
 char temp_display[4096];
+int temp = 0;
+bool is_snowing = false;
 
 typedef struct
 {
@@ -48,6 +51,52 @@ char cmd_group_hue_sat[] = "curl -s -X PUT http://%s.local/api/%s/groups/%s/acti
 // accepts server, key, group id
 char cmd_group_off[] = "curl -s -X PUT http://%s.local/api/%s/groups/%s/action --data '{\"on\":false}'";
 
+void draw_snow()
+{
+    static float alpha = 0.0f;
+    static bool inactive = true;
+    static Vector2 snow[50] = {0};
+
+    if (inactive)
+    {
+        inactive = false;
+        for (int i = 0; i < 50; i++)
+        {
+            snow[i].x = GetRandomValue(0, GetScreenWidth());
+            snow[i].y = GetRandomValue(0, GetScreenHeight());
+        }
+    }
+
+    if (is_snowing && alpha < 1.0f)
+    {
+        alpha += GetFrameTime() * 0.1f;
+    }
+
+    if (!is_snowing && alpha > 0.0f)
+    {
+        alpha -= GetFrameTime() * 0.1f;
+        if (alpha < 0.0f)
+        {
+            alpha = 0.0f;
+        }
+    }
+
+    if (alpha > 0.0f)
+    {
+        for (int i = 0; i < 50; i++)
+        {
+            snow[i].y += GetFrameTime() * 20;
+            if (snow[i].y > GetScreenHeight())
+            {
+                snow[i].x = GetRandomValue(0, GetScreenWidth());
+                snow[i].y = -3;
+            }
+
+            DrawRectangle(snow[i].x, snow[i].y, 3, 3, Fade(WHITE, alpha));
+        }
+    }
+}
+
 void draw_temp(int x, int y)
 {
     temp_countdown -= GetFrameTime();
@@ -84,7 +133,22 @@ void draw_temp(int x, int y)
         text_size = MeasureText(temp_display, GetFontDefault().baseSize * 3);
     }
 
-    DrawText(temp_display, x - text_size, y, GetFontDefault().baseSize * 3, RED);
+    Color c = RED;
+    temp = atoi(temp_display);
+
+    if (temp < 33)
+    {
+        c = BLUE;
+    }
+
+    if (temp < 0)
+    {
+        c = WHITE;
+    }
+
+    is_snowing = !(strstr(temp_display, "Snow") == NULL) || !(strstr(temp_display, "snow") == NULL);
+
+    DrawText(temp_display, x - text_size, y, GetFontDefault().baseSize * 3, c);
 }
 
 void draw_time(int x, int y)
@@ -99,10 +163,17 @@ void draw_time(int x, int y)
         time(&raw_time);
         timeinfo = localtime(&raw_time);
         int hours = timeinfo->tm_hour;
+
         if (hours > 12)
         {
             hours -= 12;
         }
+
+        if (hours < 1)
+        {
+            hours = 12;
+        }
+
         sprintf(time_display, "%d:%02d:%02d", hours, timeinfo->tm_min, timeinfo->tm_sec);
     }
 
@@ -252,6 +323,8 @@ int main(void)
     {
         BeginDrawing();
         ClearBackground(BLACK);
+
+        draw_snow();
 
         if (current_group == -1)
         {
