@@ -16,6 +16,7 @@ bool is_snowing = false;
 
 typedef struct
 {
+    int type;
     char code[16];
     char name[4096];
 } Group;
@@ -248,22 +249,22 @@ void read_groups()
 void update_top_menu()
 {
     int i = 0;
-    for (int y = 0; y < 3; y++)
+    for (int y = 0; y < 4; y++)
     {
         for (int x = 0; x < 2; x++)
         {
             if (IsMouseButtonPressed(0) &&
                 CheckCollisionPointRec(GetMousePosition(), (Rectangle){
                                                                25 + x * 380,
-                                                               25 + y * 110,
+                                                               25 + y * 90,
                                                                370,
-                                                               100}))
+                                                               80}))
             {
                 current_group = i;
             }
 
-            DrawRectangleLines(25 + x * 380, 25 + y * 110, 370, 100, RED);
-            DrawText(groups[i].name, 35 + x * 380, 40 + y * 110, 50, RED);
+            DrawRectangleLines(25 + x * 380, 25 + y * 90, 370, 80, RED);
+            DrawText(groups[i].name, 35 + x * 380, 40 + y * 90, 50, RED);
             i++;
             if (i == group_count)
                 break;
@@ -280,29 +281,57 @@ void update_group()
 {
     DrawText(groups[current_group].name, 10, 10, 80, RED);
 
-    for (int i = 0; i < 10; i++)
+    if (groups[current_group].type == 0)
     {
-        Color bg = Fade(WHITE, (float)i / 9.0f);
-        DrawRectangle(30 + i * 75, 350, 65, 50, bg);
-        DrawRectangleLines(30 + i * 75, 350, 65, 50, RED);
-        if (IsMouseButtonPressed(0) &&
-            CheckCollisionPointRec(GetMousePosition(), (Rectangle){
-                                                           30 + i * 75, 350, 65, 50}))
+        for (int i = 0; i < 10; i++)
         {
-            set_level(i);
-            current_group = -1;
+            Color bg = Fade(WHITE, (float)i / 9.0f);
+            DrawRectangle(30 + i * 75, 350, 65, 50, bg);
+            DrawRectangleLines(30 + i * 75, 350, 65, 50, RED);
+            if (IsMouseButtonPressed(0) &&
+                CheckCollisionPointRec(GetMousePosition(), (Rectangle){
+                                                               30 + i * 75, 350, 65, 50}))
+            {
+                set_level(i);
+                current_group = -1;
+            }
+        }
+
+        for (int i = 0; i < hue_sat_count; i++)
+        {
+            DrawRectangle(30 + i * 75, 200, 65, 50, hue_sats[i].preview);
+            DrawRectangleLines(30 + i * 75, 200, 65, 50, RED);
+            if (IsMouseButtonPressed(0) &&
+                CheckCollisionPointRec(GetMousePosition(), (Rectangle){
+                                                               30 + i * 75, 200, 65, 50}))
+            {
+                set_color(i);
+                current_group = -1;
+            }
         }
     }
-
-    for (int i = 0; i < hue_sat_count; i++)
+    else if (groups[current_group].type == 1)
     {
-        DrawRectangle(30 + i * 75, 200, 65, 50, hue_sats[i].preview);
-        DrawRectangleLines(30 + i * 75, 200, 65, 50, RED);
-        if (IsMouseButtonPressed(0) &&
-            CheckCollisionPointRec(GetMousePosition(), (Rectangle){
-                                                           30 + i * 75, 200, 65, 50}))
+        Rectangle rec = (Rectangle){
+            GetScreenWidth() / 8,
+            200,
+            GetScreenWidth() / 4,
+            GetScreenWidth() / 4};
+
+        DrawRectangleLinesEx(rec, 1.0f, WHITE);
+
+        if (CheckCollisionPointRec(GetMousePosition(), rec) && IsMouseButtonPressed(0))
         {
-            set_color(i);
+            printf("Turn off\n");
+            current_group = -1;
+        }
+
+        rec.x = GetScreenWidth() / 8 * 5;
+        DrawRectangleRec(rec, WHITE);
+
+        if (CheckCollisionPointRec(GetMousePosition(), rec) && IsMouseButtonPressed(0))
+        {
+            printf("Turn on\n");
             current_group = -1;
         }
     }
@@ -314,6 +343,11 @@ int main(void)
     key = getenv("HUE_KEY");
 
     read_groups();
+
+    sprintf(groups[group_count].name, "%s", "Playroom");
+    groups[group_count].type = 1;
+    sprintf(groups[group_count].code, "%s", "-99");
+    group_count++;
 
     InitWindow(800, 480, "Ray-C-dence");
 
