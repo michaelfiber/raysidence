@@ -322,7 +322,7 @@ void update_group()
 
         if (CheckCollisionPointRec(GetMousePosition(), rec) && IsMouseButtonPressed(0))
         {
-            printf("Turn off\n");
+            system("./kasa-off.sh");
             current_group = -1;
         }
 
@@ -331,7 +331,7 @@ void update_group()
 
         if (CheckCollisionPointRec(GetMousePosition(), rec) && IsMouseButtonPressed(0))
         {
-            printf("Turn on\n");
+            system("./kasa-on.sh");
             current_group = -1;
         }
     }
