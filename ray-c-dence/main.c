@@ -6,6 +6,7 @@
 #include <linux/input.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 
 char *server;
 char *key;
@@ -13,6 +14,14 @@ char time_display[4096];
 char temp_display[4096];
 int temp = 0;
 bool is_snowing = false;
+
+bool is_thinking = false;
+
+Rectangle ripple_last;
+Rectangle ripple;
+float ripple_alpha = 0.0f;
+Color ripple_color;
+
 
 typedef struct
 {
@@ -98,6 +107,57 @@ void draw_snow()
     }
 }
 
+void draw_ripple()
+{
+    if (ripple.width > GetScreenWidth() * 2)
+    {
+        return;
+    }
+
+    DrawRectangleLinesEx(ripple, 2.0f, Fade(ripple_color, ripple_alpha));
+    ripple.width += GetFrameTime() * 1000;
+    ripple.height += GetFrameTime() * 1000;
+    ripple.x -= GetFrameTime() * 500;
+    ripple.y -= GetFrameTime() * 500;
+    ripple_alpha -= GetFrameTime();
+}
+
+void draw_thinking()
+{
+    static float rot = 0.0f;
+    
+    if (is_thinking)
+    {
+        rot += GetFrameTime() * 100;
+        Rectangle rec = (Rectangle){
+            GetScreenWidth() / 2 - 20,
+            GetScreenHeight() - 40,
+            40, 
+            40
+        };
+
+        DrawRectanglePro(rec, (Vector2){ 20, 20 }, rot, BLUE);
+
+    }
+}
+
+void activate_ripple(Rectangle rec, Color c)
+{
+    ripple_color = c;
+
+    ripple.x = rec.x;
+    ripple.y = rec.y;
+    ripple.width = rec.width;
+    ripple.height = rec.height;
+
+    ripple_last.x = rec.x;
+    ripple_last.y = rec.y;
+    ripple_last.width = rec.width;
+    ripple_last.height = rec.height;
+
+    ripple_alpha = 1.0f;
+}
+
 void draw_temp(int x, int y)
 {
     temp_countdown -= GetFrameTime();
@@ -181,6 +241,22 @@ void draw_time(int x, int y)
     DrawText(time_display, x, y, GetFontDefault().baseSize * 5, RED);
 }
 
+void *_run_cmd(void *cmd)
+{
+    system(cmd);
+    printf("Thread done\n");
+    activate_ripple(ripple_last, GREEN);
+    is_thinking = false;
+    return NULL;
+}
+
+void run_cmd(char *cmd)
+{
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, _run_cmd, cmd);
+    printf("set_level done\n");
+}
+
 void set_level(int level)
 {
     char cmd[4096];
@@ -193,14 +269,16 @@ void set_level(int level)
     {
         sprintf(cmd, cmd_group_off, server, key, groups[current_group].code);
     }
-    system(cmd);
+
+    run_cmd(cmd);
 }
 
 void set_color(int hue_sat)
 {
     char cmd[4096];
     sprintf(cmd, cmd_group_hue_sat, server, key, groups[current_group].code, hue_sats[hue_sat].hue, hue_sats[hue_sat].sat);
-    system(cmd);
+
+    run_cmd(cmd);
 }
 
 void read_groups()
@@ -253,17 +331,20 @@ void update_top_menu()
     {
         for (int x = 0; x < 2; x++)
         {
+            Rectangle rec = (Rectangle){
+                25 + x * 380,
+                25 + y * 90,
+                370,
+                80};
+
             if (IsMouseButtonPressed(0) &&
-                CheckCollisionPointRec(GetMousePosition(), (Rectangle){
-                                                               25 + x * 380,
-                                                               25 + y * 90,
-                                                               370,
-                                                               80}))
+                CheckCollisionPointRec(GetMousePosition(), rec))
             {
+                activate_ripple(rec, GREEN);
                 current_group = i;
             }
 
-            DrawRectangleLines(25 + x * 380, 25 + y * 90, 370, 80, RED);
+            DrawRectangleLinesEx(rec, 1.0f, RED);
             DrawText(groups[i].name, 35 + x * 380, 40 + y * 90, 50, RED);
             i++;
             if (i == group_count)
@@ -285,13 +366,16 @@ void update_group()
     {
         for (int i = 0; i < 10; i++)
         {
+            Rectangle rec = (Rectangle){
+                30 + i * 75, 350, 65, 50};
             Color bg = Fade(WHITE, (float)i / 9.0f);
-            DrawRectangle(30 + i * 75, 350, 65, 50, bg);
-            DrawRectangleLines(30 + i * 75, 350, 65, 50, RED);
+            DrawRectangleRec(rec, bg);
+            DrawRectangleLinesEx(rec, 1.0f, RED);
             if (IsMouseButtonPressed(0) &&
-                CheckCollisionPointRec(GetMousePosition(), (Rectangle){
-                                                               30 + i * 75, 350, 65, 50}))
+                CheckCollisionPointRec(GetMousePosition(), rec))
             {
+                is_thinking = true;
+                activate_ripple(rec, MAROON);
                 set_level(i);
                 current_group = -1;
             }
@@ -299,12 +383,15 @@ void update_group()
 
         for (int i = 0; i < hue_sat_count; i++)
         {
-            DrawRectangle(30 + i * 75, 200, 65, 50, hue_sats[i].preview);
-            DrawRectangleLines(30 + i * 75, 200, 65, 50, RED);
+            Rectangle rec = (Rectangle){
+                30 + i * 75, 200, 65, 50};
+            DrawRectangleRec(rec, hue_sats[i].preview);
+            DrawRectangleLinesEx(rec, 1.0f, RED);
             if (IsMouseButtonPressed(0) &&
-                CheckCollisionPointRec(GetMousePosition(), (Rectangle){
-                                                               30 + i * 75, 200, 65, 50}))
+                CheckCollisionPointRec(GetMousePosition(), rec))
             {
+                is_thinking = true;
+                activate_ripple(rec, MAROON);
                 set_color(i);
                 current_group = -1;
             }
@@ -322,7 +409,10 @@ void update_group()
 
         if (CheckCollisionPointRec(GetMousePosition(), rec) && IsMouseButtonPressed(0))
         {
-            system("./kasa-off.sh");
+            is_thinking = true;
+            activate_ripple(rec, MAROON);
+            run_cmd("./kasa-off.sh");
+            //system("./kasa-off.sh");
             current_group = -1;
         }
 
@@ -331,7 +421,10 @@ void update_group()
 
         if (CheckCollisionPointRec(GetMousePosition(), rec) && IsMouseButtonPressed(0))
         {
-            system("./kasa-on.sh");
+            is_thinking = true;
+            activate_ripple(rec, MAROON);
+            run_cmd("./kasa-on.sh");
+            //system("./kasa-on.sh");
             current_group = -1;
         }
     }
@@ -353,12 +446,18 @@ int main(void)
 
     SetTargetFPS(30);
 
+    ripple.width = GetScreenWidth() * 2;
+
     while (!WindowShouldClose())
     {
         BeginDrawing();
         ClearBackground(BLACK);
 
         draw_snow();
+
+        draw_ripple();
+
+        draw_thinking();
 
         if (current_group == -1)
         {
